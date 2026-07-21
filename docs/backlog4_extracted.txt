@@ -1,0 +1,587 @@
+
+
+=== PAGE 1 ===
+
+Backlog Maître Ultra Détaillé — Sahar
+Version consolidée finale. Chaque tâche : quelques heures max, avec
+vérification claire.
+Comment utiliser ce document
+1. Suis les tâches dans l'ordre exact, ne saute rien.
+2. Chaque tâche a une case [4 "C'est terminé quand..." — n'avance pas tant que ce n'est
+pas vrai.
+3. Chaque tâche a une ligne " > Demande à Cline :" — le prompt exact à copier-coller,
+déjà calibré pour qu'il t'explique au lieu de tout faire à ta place.
+4. Ce document remplace toutes les versions précédentes de ton backlog — ne les utilise
+plus.
+PHASE 0 — Environnement (WSL2, Docket, Ollama, Cline)
+Tâche 0.1 — Installer VS Code (Windows)
+Télécharge sur https://code.visualstudio.com/, installe avec les réglages par défaut.
+Terminé quand : VS Code s'ouvre normalement.
+Tâche 0.2 — Installer WSL2 (PowerShell, une seule fois)
+Ouvre Windows Terminal en administrateur, onglet PowerShell :
+powershell
+wsl --install -d Ubuntu
+Redémarre le PC si demandé. Rouvre Windows Terminal, un nouvel onglet "Ubuntu"
+apparaît — clique dessus, crée un nom d'utilisateur et un mot de passe quand ils te sont
+demandés dans cette même fenêtre.
+Terminé quand : tu as un prompt du style (pas (Ps C:\...>).
+Tache 0.3 — Vérifier WSL2 (PowerShell)
+powershell
+wsl -1 -v
+
+
+=== PAGE 2 ===
+
+Terminé quand: ça affiche (Ubuntu), (Running), (VERSION 2).
+Tâche 0.4 — Installer Docker Desktop (Windows) + activer l'intégration WSL
+1. Télécharge sur https:/www.docker.com/products/docker-desktop/, installe.
+2. Ouvre Docker Desktop > icône engrenage (Settings) > Resources > WSL Integration
+> active le toggle à côté de "Ubuntu" > Apply & Restart.
+Terminé quand (dans le terminal Ubuntu) :
+bash
+docker --version
+docker run hello-world
+affiche un message de bienvenue.
+Tâche 0.5 — Installer Python (terminal Ubuntu)
+bash
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv git curl
+python3 --version
+Terminé quand : un numéro de version Python s'affiche.
+Tâche 0.6 — Créer ton dépôt GitHub et le cloner dans WSL
+1. Sur https://github.com, crée un nouveau dépôt (ex:(iot-project)).
+2. Dans le terminal Ubuntu:
+bash
+cd ~
+git clone https://github.com/ton-compte/iot-project.git
+cd iot-project
+A. Ne jamais travailler dans — toujours dans (le vrai
+système de fichiers Linux), sinon tout est plus lent et source de bugs.
+Terminé quand :(pud) affiche (/hone/sahar_jerbi/iot-project)
+Tâche 0.7 — Ouvrir le projet dans VS Code, connecté à WSL
+Dans le terminal Ubuntu, depuis le dossier du projet :
+bash
+
+
+=== PAGE 3 ===
+
+code .
+Terminé quand : VS Code s'ouvre, et le coin en bas à gauche affiche "WSL: Ubuntu".
+Tâche 0.8 — Installer les extensions VS Code (dans WSL, pas Windows)
+Panneau Extensions ((ctr1+shift+x)). Pour chacune ci-dessous, si un bouton "Install in
+WSL: Ubuntu" apparaît, clique CELUI-LÀ (pas le bouton Install normal) :
+« Python (Microsoft)
+e Docker (Microsoft)
+e GitLens
+e ErrorLens
++ YAML
+e Thunder Client
+| Pourquoi ce bouton spécifique existe : ton code vit dans WSL, donc les extensions
+doivent aussi "vivre" 1a où est ton code pour pouvoir l'analyser. Une extension installée
+côté Windows ne voit pas les fichiers dans WSL.
+Terminé quand : aucune extension n'affiche "disabled, install in WSL" dans son onglet.
+Tâche 0.9 — Installer Ollama + ton modèle local (terminal Ubuntu)
+bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:7b
+ollama pull nomic-embed-text
+* Le premier téléchargement prend du temps (plusieurs Go) — laisse tourner, ne lance
+pas d'autre commande Ollama en parallèle (ça peut interrompre le téléchargement).
+Terminé quand:
+bash
+ollama list
+affiche les deux modèles.
+Tâche 0.10 — Limiter la RAM que WSL2 peut utiliser (PowerShell)
+powershell
+notepad "$env:USERPROFILE\.wslconfig"
+
+
+=== PAGE 4 ===
+
+Colle (ajuste selon ta RAM totale) :
+
+[ws12]
+
+memory=12GB
+
+processors=4
+Enregistre, puis :
+
+powershell
+
+wsl --shutdown
+Rouvre ton terminal Ubuntu.
+Tâche 0.11 — Installer et connecter Cline
+
+1. Extensions VS Code > cherche "Cline" > Install in WSL.
+
+2. Clique l'icône Cline dans la barre latérale > réglages (engrenage).
+
+3. Provider: Ollama, URL: (retp=//1ocahost:11434) modèle :(quen2  5-coder 7b).
+
+4. Sitrop lent sur ta machine (normal avec un GPU intégré Intel) : bascule le provider
+
+sur DeepSeek (gratuit, plus rapide) dans les mêmes réglages.
+
+Terminé quand : tu tapes "crée un fichier hello.py qui affiche Bonjour" dans Cline, et il
+propose le fichier (tu n'as pas encore besoin d'approuver, juste vérifier qu'il répond).
+Tâche 0.12 — Comment donner du contexte à Cline (fais-le maintenant, une
+fois pour toutes)
+Copie-colle ce prompt dans Cline pour qu'il comprenne ton projet et respecte ta façon
+d'apprendre :
+
+[Utilise le prompt de contexte complet qu'on a déjà préparé ensemble —
+
+copie-le depuis notre conversation précédente, il décrit le projet,
+
+ton périmètre (Docker + Agent 1 + Agent 4), et la règle : m'expliquer
+
+étape par étape plutôt que tout faire à ma place. ]
+Terminé quand : Cline répond en confirmant qu'il a compris ton rôle et la règle
+"expliquer avant de coder".
+Tâche 0.13 — Copier tes documents de référence dans le projet
+
+bash
+
+mkdir -p -/iot-project/reference-docs
+
+
+=== PAGE 5 ===
+
+Copie ton cahier des charges, ton backlog, tes guides (les fichiers qu'on a créés
+ensemble) dedans, soit via(cp /mnt/c/Users/.../fichier.md ~/iot-project/reference-
+docs/ ), soit en les glissant dans VS Code (voir solutions du début de ce message).
+Terminé quand: ces fichiers apparaissent dans la sidebar VS Code, sous reference-
+docs/ |.
+PHASE 1 — Docker : les bases
+Tâche 1.1 — Créer la structure de dossiers
+
+bash
+
+cd -/iot-project
+
+mkdir -p backend/app
+Terminé quand : existe (visible dans la sidebar VS Code).
+Tâche 1.2 — Premier script Python
+Crée (clic droit sur > New File) :
+
+python
+
+print("Ma plateforme démarre")
+Teste :
+
+bash
+
+python3 backend/app/main.py
+Terminé quand : le message s'affiche dans le terminal.
+Tâche 1.3 — Premier Dockerfile
+Crée ‘
+
+dockerfile
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY app/main.py .
+
+CMD ["python", "main.py"]
+
+Demande a Cline : "Explique-moi ligne par ligne ce que fait ce Dockerfile, sans le
+
+modifier."
+
+
+=== PAGE 6 ===
+
+Tâche 1.4 — Construire et lancer l'image
+
+bash
+
+docker build -t mon-backend ./backend
+
+docker run mon-backend
+Terminé quand : le message s'affiche, exécuté depuis un conteneur.
+Tâche 1.5 — Premier docker-compose.yml
+Crée (docker-compose.ym] ) à la racine :
+
+yaml
+
+services:
+
+backend:
+build: ./backend
+
+bash
+
+docker compose up
+Terminé quand : ça fonctionne pareil, via Compose.
+Tâche 1.6 — Sécuriser tes futurs secrets dès maintenant
+Crée à la racine :
+
+env
+
+venv/
+
+__pycache__/
+
+rag_db/
+Crée (vide pour l'instant) :
+
+ANTHROPIC API KEY=
+Terminé quand:
+
+bash
+
+git status
+ne montre jamais dans les fichiers à commiter.
+
+
+=== PAGE 7 ===
+
+PHASE 2 — FastAPI
+Tâche 2.1 — Environnement virtuel Python
+bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+Terminé quand : le prompt affiche au début.
+Tâche 2.2 — Installer les dépendances
+bash
+pip install fastapi "uvicorn[standard]" python-dotenv anthropic gitpython
+pip freeze > requirements.txt
+Tâche 2.3 — API "Hello"
+Remplace (backend/app/main.py):
+python
+from fastapi import FastAPI
+app = FastAPI(title="IoT Backend - Sahar")
+@app N get( Ju )
+def racine():
+return {"message": "Backend is running"}
+bash
+uvicorn app.main:app --reload --host 0.0.0.0
+Ouvre(http://1ocalhost : 8000 )dans ton navigateur (Windows, ça marche automatiquement
+depuis WSL).
+Terminé quand tu vois ({"nessage" "Backend 15 running”)
+Tâche 2.4 — Route POST /analyze (vide, testée avec Thunder Client)
+python
+
+
+=== PAGE 8 ===
+
+from pydantic import BaseModel
+class Requete (BaseModel ) :
+url github: str
+@app.post("/analyze")
+def analyser(requete: Requete):
+return {"statut": "Projet reçu", "url": requete.url github}
+Dans Thunder Client (icône dans la sidebar) : nouvelle requête POST vers
+http://localhost:8080/analyze | corps JSON ({"url_github": "test"})
+Terminé quand : Thunder Client affiche la réponse attendue.
+Tâche 2.5 — Dockeriser Fast API
+dockerfile
+# backend/Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY : :
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+yaml
+# docker-compose.yml
+services:
+backend:
+build: ./backend
+ports:
+- "8000:8000"
+env_file:
+- env
+bash
+Cd
+docker compose up --build
+Terminé quand :(http://localhost:8000/docs)fonctionne depuis le conteneur.
+Demande à Cline (si bloquée) : "Voici l'erreur exacte : [colle l'erreur]. Explique-moi ce
+qu'elle signifie avant de proposer une correction."
+
+
+=== PAGE 9 ===
+
+PHASE 3 — Agent 1 : détection multi-frameworks
+Tâche 3.1 — Cloner un dépôt GitHub par script
+Crée (backend/app/agent1.py]:
+python
+from git import Repo, GitCommandError
+import tempfile, shutil
+def cloner_depot(ur1_github: str) -> dict:
+dossier_temp = tempfile.mkdtemp()
+ERE
+Repo.clone_from(url github, dossier temp, depth=1)
+return {"succes": True, "dossier": dossier _temp}
+except GitCommandError as e:
+shutil.rmtree(dossier_temp, ignore _errors=True)
+return {"succes": False, "erreur": str(e)}
+Terminé quand : testé avec une vraie URL, et le dossier contient des
+fichiers.
+Tâche 3.2 — Lister tous les fichiers du dépôt (en ignorant les dépendances)
+python
+import os
+def lister tous les fichiers(dossier: str) -> set:
+fichiers trouves = set()
+for racine, dossiers, fichiers in os.walk(dossier):
+if "deps" in racine or "modules" in racine or ".git" in racine:
+continue
+fichiers trouves.update(fichiers)
+return fichiers_trouves
+Tâche 3.3 — Définir les empreintes de chaque framework
+python
+
+
+=== PAGE 10 ===
+
+FINGERPRINTS = {
+"Zephyr RTOS": {"fichiers_requis": ["prj.conf"], "fichiers _ bonus": ["CMakeL
+"Arduino/PlatformI0": {"fichiers_requis": ["platformio.ini"], "fichiers _bon
+"ESP-IDF": {"fichiers_requis": ["sdkconfig"], "fichiers bonus": ["CMakeList
+"Mbed 0S": {"fichiers requis": ["mbed_app.json"], "fichiers bonus": []},
+}
+4 GED pb
+© Demande a Cline : "Explique-moi pourquoi CMakeLists.txt seul ne suffit pas à
+distinguer Zephyr d'ESP-IDF, sans modifier mon code."
+Tâche 3.4 — Scorer et détecter le framework
+python
+def detecter _framework(fichiers_trouves: set) -> dict:
+resultats = {}
+for framework, regles in FINGERPRINTS. items () :
+requis presents = [f for f in regles["fichiers_requis"] if f in fichier
+bonus presents = [f for f in regles["fichiers_bonus"] if f in fichiers_
+if requis presents:
+resultats[framework] = {
+"score": len(requis presents) * 2 + len(bonus_presents),
+"fichiers detectes": requis presents + bonus presents
+}
+if not resultats:
+return {"framework": "inconnu", "confiance": "basse"}
+meilleur = max(resultats, key=lambda f: resultats[f]["score"])
+return {
+"framework": meilleur, "confiance": "haute",
+"fichiers _detectes": resultats[meilleur]["fichiers_detectes"]
+i
+bu OO) >»
+Terminé quand :
+python
+print(detecter_framework({"platformio.ini", "src", "README.md"}))
+# > {"framework": "Arduino/PlatformI0", "confiance": "haute", ...}
+Tache 3.5 — Extraire les protocoles (si Zephyr)
+python
+
+
+=== PAGE 11 ===
+
+def valider _prj_conf (chemin: str) -> dict:
+with open(chemin, "r", errors="ignore") as f:
+contenu = f.read()
+if len(contenu.strip()) == 0:
+return {"valide": False, "raison": "fichier vide"}
+protocoles = []
+if "CONFIG MQTT" in contenu:
+protocoles.append("MQTT")
+if "CONFIG_WIFI" in contenu or "CONFIG_NET_L2 WIFI" in contenu:
+protocoles.append ("WiFi")
+return {"valide": True, "protocoles detectes": protocoles}
+Tâche 3.6 — LLM seulement si ambigu, fonction complète
+python
+def analyser avec ia si besoin(fichiers trouves: set, resultat simple: dict) ->
+if resultat simple["confiance"] == "haute":
+return resultat_simple
+# Appel LLM local via Ollama (gratuit) si détection simple échoue
+import ollama, json
+prompt = Fu nn
+Fichiers trouvés : {list(fichiers_trouves)}
+Aucune regle simple n'a identifié le framework.
+Réponds en JSON : {{"framework": "...", "confiance": "moyenne"}}
+mnmnn
+reponse = ollama.chat(model="qwen2.5-coder:7b", messages=[{"role": "user",
+return json.loads(reponse["message"]["content"])
+« = = = = = = —_—_—_——_—_—=» >
+Tâche 3.7 — Fonction complète bout en bout
+python
+def analyser depot _complet(url github: str) -> dict:
+clonage = cloner _depot(url github)
+if not clonage["succes"]:
+return {"erreur": clonage["erreur"]}
+fichiers _trouves = lister _tous les fichiers(clonage["dossier"])
+resultat = detecter framework(fichiers trouves)
+return analyser avec ia si besoin(fichiers trouves, resultat)
+Tâche 3.8 — Tester sur 4-5 vrais dépôts GitHub différents
+Cherche sur GitHub : un exemple Zephyr, un exemple PlatformIO, un exemple ESP-IDF.
+Note dans un tableau ce qui marche.
+
+
+=== PAGE 12 ===
+
+Terminé quand : au moins 3 dépôts réels sont correctement identifiés.
+Tâche 3.9 — Brancher à FastAPI et publier le contrat
+python
+from app.agentl import analyser_depot_complet
+@app.post("/analyze")
+def analyser(requete: Requete):
+return analyser_depot_complet(requete.url github)
+Crée avec un exemple réel, commit, push, préviens Ameni.
+PHASE 4 — Etendre l'infrastructure Docker
+Tâche 4.1 — Ajouter Mosquitto
+yaml
+mosquitto:
+image: eclipse-mosquitto:2
+ports:
+- "1883:1683"
+volumes:
+- ./Mosquitto/config:/mosquitto/config
+Crée [
+listener 1883
+allow anonymous true
+persistence true
+persistence location /mosquitto/data/
+bash
+docker compose up -d
+Tâche 4.2 — Ajouter InfluxDB
+yaml
+
+
+=== PAGE 13 ===
+
+influxdb:
+image: influxdb:2.7
+ports:
+- "8086:8086"
+environment:
+- DOCKER_INFLUXDB_INIT_MODE=setup
+- DOCKER_INFLUXDB_INIT_USERNAME=admin
+- DOCKER_INFLUXDB_INIT_PASSWORD=motdepassel23
+- DOCKER_INFLUXDB_INIT_ORG=iot-org
+- DOCKER_INFLUXDB_INIT_BUCKET=capteurs
+volumes:
+- influx_data:/var/lib/influxdb2
+volumes:
+influx_data:
+Tâche 4.3 — Ajouter Grafana
+yaml
+grafana:
+image: grafana/grafana:latest
+ports:
+- "3000:3000"
+Terminé quand:
+bash
+docker compose up -d
+docker ps
+montre 4 conteneurs actifs.
+PHASE 5 — Agent 4 : RAG avec embeddings locaux (Ollama,
+gratuit)
+Tâche 5.1 — Installer les bibliothèques
+bash
+pip install chromadb langchain-text-splitters ollama
+pip freeze > requirements.txt
+
+
+=== PAGE 14 ===
+
+Tâche 5.2 — Créer un document de test
+Crée :
+markdown
+# Erreur : west command not found
+Solution : “pip install west’ puis redémarrer le terminal.
+Tâche 5.3 — Générer des embeddings avec Ollama (gratuit, local)
+python
+import ollama
+import chromadb
+client _chroma = chromadb.PersistentClient(path="./rag db")
+collection = client chroma.get or _ create collection("docs techniques")
+def generer _embedding(texte: str) -> list:
+reponse = ollama.embeddings(model="nomic-embed-text", prompt=texte)
+return reponse["embedding"]
+Tâche 5.4 — Indexer un document (chunking + embeddings)
+python
+from langchain text splitters import RecursiveCharacterTextSplitter
+def indexer _document(chemin fichier: str, source: str):
+with open(chemin fichier, "r") as f:
+texte = f.read()
+splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+chunks = splitter.split_text(texte)
+embeddings = [generer_embedding(c) for c in chunks]
+collection.add(documents=chunks, embeddings=embeddings, ids=[f"{source} {i}
+indexer_document("docs/erreur_test.md", "test")
+x ER.
+Terminé quand : aucune erreur, message de confirmation.
+Tâche 5.5 — Rechercher et générer une réponse
+python
+
+
+=== PAGE 15 ===
+
+def demander_a_assistant(question: str) -> str:
+embedding_q = generer_embedding(question)
+resultats = collection.query(query_embeddings=[embedding_q], n_results=3)
+chunks_pertinents = "\n---\n".join(resultats["documents"][0])
+prompt = FH nn
+Extraits : {chunks _pertinents}
+Question : {question}
+Réponds uniquement a partir de ces extraits. Si absent, dis-le clairement.
+reponse = ollama.chat(model="qwen2.5-coder:7b", messages=[{"role": "user",
+return reponse["message"]["content"]
+print(demander_a_assistant("J'ai une erreur west command not found, que faire ?
+ex. J] pb
+Terminé quand: la réponse mentionne (pip install west)
+Tâche 5.6 — Ajouter le raisonnement multi-étapes (diagnostic industriel)
+python
+from datetime import datetime
+import json
+def raisonnement _diagnostic(mesure: dict, seuils: dict) -> dict:
+if mesure["temperature"] <= seuils["temperature max"]:
+return {"statut": "normal", "diagnostic": None}
+embedding gq = generer_embedding(f"limite de température pour {mesure['capte
+resultats = collection.query(query_embeddings=[embedding_q], n_results=3)
+chunks_pertinents = "\n---\n".join(resultats["documents"][0])
+prompt = Fill nn
+Mesure : {mesure}, seuil : {seuils}
+Documentation : {chunks_pertinents}
+Explique l'anomalie et propose une recommandation. Réponds en JSON avec
+les champs "diagnostic" et "recommandation".
+nnn
+reponse = ollama.chat(model="qwen2.5-coder:7b", messages=[{"role": "user",
+resultat = json.loads(reponse["message"]["content"])
+resultat["horodatage"] = str(datetime.now())
+return resultat
+« GEES 0»
+Tache 5.7 — Ajouter 4-5 vrais documents (erreurs Docker, MQTT, Zephyr)
+Répète 5.2-5.4 avec du vrai contenu rencontré par l'équipe.
+
+
+=== PAGE 16 ===
+
+Tâche 5.8 — Construire un jeu de test (évaluation)
+python
+jeu de test = [
+{"question": "erreur west command not found", "attendu": "pip install west"
+]
+for cas in jeu de test:
+reponse = demander_a_assistant(cas["question"])
+print("©@" if cas["attendu"] in reponse else "X", cas["question"])
+«QED »
+Tache 5.9 — Brancher a FastAPI
+python
+class QuestionRAG(BaseModel):
+question: str
+@app.post("/assistant")
+def assistant(requete: QuestionRAG):
+return {"reponse": demander_a_assistant(requete.question)}
+PHASE 6 — Finitions
+Tâche 6.1 — Nettoyer et documenter
+Vérifie que démarre tout sans erreur. Complète le README.
+Tâche 6.2 — Relire la Pull Request CI/CD d'Ameni
+Comprends chaque étape, pose des questions.
+Tâche 6.3 — Commit final et présentation à l'équipe
+bash
+git add .
+git commit -m "Docker infra + Agent 1 multi-framework + Agent 4 RAG"
+git push origin main
+Une seule règle à garder en tête à chaque tâche : simple d'abord (règles, fichiers), IA
+seulement si nécessaire, test sur du réel à la fin.

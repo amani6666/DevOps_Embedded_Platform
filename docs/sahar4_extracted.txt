@@ -1,0 +1,348 @@
+
+
+=== PAGE 1 ===
+
+Guide Détaillé v3 — Sahar
+Docker complet + Agent 1 (détection Zephyr) + Agent 4 (RAG) + support Yocto
+Ce qui change par rapport à ta version précédente
+« L'Agent1 ne détecte plus un projet Arduino, mais un projet Zephyr RTOS (présence
+de (pr. conf), (dake ists. txt).
+« L'Agent 4 (RAG) doit maintenant intégrer la documentation Zephyr en plus de
+Docker/MQTT.
+e  Tuapportes un support ponctuel à Ameni en semaine 5-6 pour intégrer Docker dans
+son image Yocto.
+« Lereste (infra Docker complète, CI/CD transféré à Ameni) ne change pas.
+Semaine 1 — Docker de base + FastAPI + premier LLM
+(Identique à ta version précédente : Dockerfile backend, squelette docker-compose.yml,
+test_llm.py.)
+Semaine 2 — Mosquitto
+(Identique : ajout du service Mosquitto au docker-compose.yml, réseau Docker.)
+Semaine 3 — InfluxDB + Grafana (infra)
+(Identique : tu livres l'infrastructure, Nour et Ameni y branchent leurs
+données/dashboards.)
+Semaine 4 — Agent 1 (détection Zephyr)
+A Ce que cette section couvre vraiment : la version "vérifie 2 fichiers" est le point de
+départ (10 minutes de code), pas l'objectif. Le vrai travail de la semaine, c'est de rendre
+ça robuste face à de vrais dépôts GitHub désordonnés. Voici à quoi ressemble
+concrètement ta semaine.
+Jour 1 — Clonage robuste (pas juste (Repo. clone_from))
+python
+
+
+=== PAGE 2 ===
+
+from git import Repo, GitCommandError
+import tempfile, shutil
+def cloner_depot(ur1l github: str) -> dict:
+dossier temp = tempfile.mkdtemp()
+Try
+Repo.clone from(url github, dossier temp, depth=1) # depth=1 : clone r
+return {"succes": True, "dossier": dossier temp}
+except GitCommandError as e:
+shutil.rmtree(dossier_ temp, ignore_errors=True)
+return {"succes": False, "erreur": f"Impossible de cloner : {str(e)}"}
+4 CED b
+Ce que tu apprends concrètement ce jour-là : gérer une URL invalide, un dépôt privé, un
+timeout réseau — teste volontairement avec une mauvaise URL pour voir l'erreur gérée
+proprement (pas un crash).
+Jour 2 — Trouver le VRAI point d'entrée (multi-frameworks, pas juste Zephyr)
+
+“ Mise à jour importante : Agent 1 détecte maintenant plusieurs frameworks
+possibles (Zephyr, Arduino/PlatformIO, ESP-IDF, Mbed OS), pas juste Zephyr. Chaque
+framework a une "empreinte" de fichiers différente.
+
+python
+
+
+=== PAGE 3 ===
+
+FINGERPRINTS = {
+"Zephyr RTOS": {
+"fichiers_requis": ["prj.conf"],
+"fichiers bonus": ["CMakeLists.txt"],
+},
+"Arduino/PlatformIO": {
+"fichiers requis": ["platformio.ini"],
+"fichiers_bonus": [],
+},
+"ESP-IDF": {
+"fichiers requis": ["sdkconfig"],
+"fichiers_bonus": ["CMakeLists.txt"],
+},
+"Mbed 0S": {
+"fichiers_requis": ["mbed_app.json"],
+"fichiers bonus": [],
+},
+}
+def lister tous les fichiers(dossier: str) -> set:
+fichiers trouves = set()
+for racine, dossiers, fichiers in os.walk(dossier ) :
+if "deps" in racine or "modules" in racine or ".git" in racine:
+continue
+fichiers_trouves.update(fichiers)
+return fichiers_trouves
+Ce que tu apprends concrètement : pourquoi seul ne suffit pas (Zephyr ET
+ESP-IDF l'utilisent tous les deux) — il faut un fichier plus spécifique ((prj. conf) ou
+(sakconfig)) pour trancher.
+Jour 3 — Scorer chaque framework (au lieu d'un simple oui/non)
+python
+
+
+=== PAGE 4 ===
+
+def detecter _framework(fichiers_ trouves: set) -> dict:
+resultats = {}
+for framework, regles in FINGERPRINTS. items () :
+requis presents = [f for f in regles["fichiers requis"] if f in fichier
+bonus presents = [f for f in regles["fichiers bonus"] if f in fichiers_
+if requis presents:
+resultats[framework] = {
+"score": len(requis presents) * 2 + len(bonus_presents),
+"fichiers detectes": requis presents + bonus presents
+}
+if not resultats:
+return {"framework": "inconnu", "confiance": "basse"}
+meilleur = max(resultats, key=lambda f: resultats[f]["score"])
+return {
+"framework": meilleur,
+"confiance": "haute",
+"fichiers detectes": resultats[meilleur]["fichiers detectes"]
+}
+
+«CED pb
+Pourquoi un score et pas juste "le premier qui correspond" : si un dépôt contient par
+erreur des fichiers de 2 frameworks différents (repos parfois désordonnés), le score choisit
+celui qui a le plus de preuves, pas juste celui vérifié en premier dans la boucle.
+
+Ce que tu dois voir à la fin :
+python
+fichiers = {"platformio.ini", "src", "lib", "README .md"}
+print(detecter_framework(fichiers))
+# > {"framework": "Arduino/PlatformI0", "confiance": "haute", ...}
+Jour 3bis — Lire le contenu pour extraire plus d'infos (protocoles)
+python
+
+
+=== PAGE 5 ===
+
+def valider _prj_conf (chemin: str) -> dict:
+with open(chemin, "r", errors="ignore") as f:
+contenu = f.read()
+if len(contenu.strip()) == 0:
+return {"valide": False, "raison": "fichier vide"}
+protocoles = []
+if "CONFIG _MQTT" in contenu:
+protocoles.append("MQTT")
+if "CONFIG WIFI" in contenu or "CONFIG NET L2 WIFI" in contenu:
+protocoles.append("WiFi")
+return {"valide": True, "protocoles detectes": protocoles}
+Ce que tu apprends concrètement : extraire de la vraie information utile (pas juste
+oui/non), en cherchant des mots-clés précis dans le contenu réel du fichier.
+Jour 4 — Le LLM seulement quand c'est vraiment ambigu
+python
+
+
+=== PAGE 6 ===
+
+import anthropic, json
+client = anthropic.Anthropic(api key="TA CLE API")
+def analyser depot complet(url github: str) -> dict:
+clonage = cloner _depot(url github)
+if not clonage["succes"]:
+return {"erreur": clonage["erreur"]}
+fichiers _trouves = lister_tous_les fichiers(clonage["dossier"])
+resultat = detecter framework(fichiers trouves)
+# Cas clair : pas besoin de LLM
+if resultat["confiance"] == "haute":
+# Bonus : si c'est Zephyr, on va chercher les protocoles dans prj.conf
+if resultat["framework"] == "Zephyr RTOS":
+for racine, _, fichiers in os.walk(clonage["dossier"]):
+if "prj.conf" in fichiers:
+validation = valider prj _conf(os.path.join(racine, "prj.con
+resultat["protocoles"] = validation.get("protocoles detecte
+break
+return resultat
+# Cas ambigu : ici, et seulement ici, on appelle le LLM
+liste fichiers = list(fichiers_trouves)
+prompt = fell mn
+Voici la liste des fichiers trouvés dans un projet embarqué : {liste fichie
+Aucune règle simple (Zephyr, Arduino/PlatformI0, ESP-IDF, Mbed 0S) n'a perm
+d'identifier le framework avec certitude.
+Réponds en JSON : {{"framework": "...", "confiance": "moyenne", "raisonneme
+response = client.messages.create(
+model="claude-sonnet-4-5", max_tokens=300,
+messages=[{"role": "user", "content": prompt}]
+)
+return json.loads(response.content[0].text)
+ex. J 4
+Ce que tu apprends concrètement : la vraie compétence "agentic AI" — décider QUAND
+appeler un LLM (coûteux, plus lent, parfois imprécis) plutôt que de l'utiliser partout par
+facilité. Et ici en plus : comment combiner plusieurs petites fonctions (détection +
+extraction de détails) au lieu de tout mettre dans une seule fonction géante.
+Jour 5 — Tester sur de VRAIS dépôts variés (pas juste 1)
+Cherche sur GitHub 4-5 projets Zephyr réels et différents (exemples officiels, projets
+communautaires), et fais tourner ton (analyser_depot_complet ()} sur chacun. Note dans un
+
+
+=== PAGE 7 ===
+
+tableau ce qui marche et ce qui casse :
+Dépôt testé Résultat attendu Résultat Problème
+obtenu rencontré
+zephyrproject-rtos/example- Zephyr, haute ss pe
+application confiance
+C'est cette étape de test sur des cas réels et variés qui prend le plus de temps — et c'est
+normal, c'est le vrai travail d'ingénierie.
+Livrable de fin de semaine : publie (mock_agent1_output.json )pour Ameni dès que le format
+est stable :
+json
+{
+"framework": "Zephyr RTOS",
+"fichiers detectes": ["prj.conf", "CMakeLists.txt"],
+"carte cible": "esp32",
+"protocoles": ["MQTT", "WiFi"]
+}
+Semaine 5 — Consolidation Docker + démarrage de la base RAG
+(Identique à ta version précédente : nettoyage de l'infra, scan Trivy en bonus, début de
+collecte documentaire pour l'Agent 4.)
+Nouveau pour cette version : commence aussi à rassembler la documentation officielle de
+Zephyr (site docs.zephyrproject.org, section "Getting Started" et "Samples") comme source
+pour ton Agent 4 — c'est le bon moment pour la télécharger/extraire pendant que ta
+semaine est plus légère.
+Semaine 6 — Agent 4 (RAG) + support Docker-dans-Yocto
+Partie A — Agent 4 (RAG), logique inchangée mais base documentaire élargie
+python
+
+
+=== PAGE 8 ===
+
+import chromadb
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+client _chroma = chromadb.PersistentClient(path="./rag db")
+collection = client chroma.get or create collection("docs techniques")
+splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+def indexer document (chemin fichier: str, source: str):
+with open(chemin_fichier, "r") as f:
+texte = f.read()
+chunks = splitter.split text(texte)
+ids = [f"{source}_{i}" for i in range(len(chunks))]
+collection.add(documents=chunks, ids=ids, metadatas=[{"source": source} for
+# Sources à indexer :
+indexer document ("docs/erreurs docker.md", "erreurs docker")
+indexer_document("docs/erreurs_mqtt.md", "erreurs_mqtt")
+indexer_document("docs/zephyr_ getting started.md", "zephyr _docs")
+indexer_document("docs/erreurs_build zephyr.md", "erreurs_zephyr") # rempli p
+4 CED b
+python
+def demander a assistant(question: str) -> str:
+resultats = collection.query(query_texts=[question], n_results=3)
+chunks pertinents = "\n---\n".join(resultats["documents"][0])
+prompt = pt mn
+Extraits de documentation pertinents :
+{chunks _pertinents}
+Question : {question}
+Réponds en te basant sur ces extraits. Si l'information n'y est pas,
+dis-le clairement plutôt que d'inventer.
+mun
+response = client.messages.create(
+model="claude-sonnet-4-5", max_tokens=500,
+messages=[{"role": "user", "content": prompt}]
+)
+return response.content[0].text
+Tester avec un cas réel Zephyr :
+python
+
+
+=== PAGE 9 ===
+
+print (demander_a_assistant("L'erreur 'west: command not found' apparaît lors .
+
+4 CE 4
+Partie B— Upgrade : raisonnement multi-étapes (inspiré de l'approche "maintenance
+industrielle")
+
+“ Pourquoi cette amélioration : au lieu de juste répondre à une question, l'agent suit
+un vrai raisonnement en plusieurs étapes, comme le ferait un technicien de
+maintenance. C'est gratuit à mettre en place (aucune nouvelle techno) et ça rend ta
+démo bien plus impressionnante.
+
+python
+
+
+=== PAGE 10 ===
+
+def raisonnement_diagnostic(mesure: dict, seuils: dict) -> dict:
+nin
+mesure : ex. {"temperature": 82, "capteur": "moteur _1"}
+seuils : ex. {"temperature max": 70}
+nmn
+# Etape 1 — Détection d'anomalie
+anomalie detectee = mesure["temperature"] > seuils["temperature max"]
+if not anomalie detectee:
+return {"statut": "normal", "diagnostic": None}
+# Etape 2-3 — Recherche documentaire + récupération des limites
+resultats = collection.query(
+query_texts=[f"limite de température recommandée pour {mesure['capteur'
+n_results=3
+)
+chunks_pertinents = "\n---\n".join(resultats["documents"][0])
+# Étape 4-6 — Comparaison, diagnostic, recommandation (le LLM fait ces 3 ét
+prompt = Fu mu
+Un capteur a mesuré : {mesure}
+Le seuil normal est : {seuils}
+Voici des extraits de documentation pertinents :
+{chunks _pertinents}
+En te basant sur ces informations :
+1. Explique pourquoi cette valeur est anormale
+2. Propose une recommandation de maintenance concrete
+Réponds en JSON avec les champs "diagnostic" et "recommandation".
+nmin
+response = client.messages.create(
+model="claude-sonnet-4-5", max_tokens=500,
+messages=[{"role": "user", "content": prompt}]
+)
+resultat = json.loads(response.content[0].text)
+# Étape 7 — Notification (ici : simple enregistrement, pas besoin de vrai s
+resultat["ticket_cree"] = True
+resultat["horodatage"] = str(datetime.now())
+with open("tickets/tickets.jsonl", "a") as f:
+f.write(json.dumps(resultat) + "\n")
+return resultat
+ex] b
+Tester :
+
+
+=== PAGE 11 ===
+
+python
+print(raisonnement_diagnostic (
+mesure={"temperature": 82, "capteur": "esp32_salon"},
+seuils={"temperature_max": 70}
+))
+Livrable : l'agent détecte une anomalie, cherche la documentation pertinente, génère un
+diagnostic ET une recommandation, et enregistre un "ticket" — les 7 étapes en une seule
+fonction, sans matériel ni bibliothèque supplémentaire.
+Partie C — Support ponctuel à Ameni (Docker dans Yocto)
+
+Intégrer Docker dans une image Yocto : ajouter une "recette" BitBake qui installe le
+moteur Docker à l'intérieur de l'image Linux générée, pour que le Raspberry Pi ait
+Docker disponible dès son premier démarrage.
+
+Ton rôle ici n'est pas de maîtriser Yocto toi-même, mais d'apporter ton expertise Docker :
+e Vérifie avec Ameni que la version de Docker Engine choisie pour la recette Yocto est
+compatible avec tes images (celles de ton (docker-compose.ym1)).
+« Aide à tester que les conteneurs Mosquitto/InfluxDB/Grafana démarrent
+correctement une fois l'image Yocto lancée (dans QEMU ou sur le vrai Raspberry Pi).
+Livrable : l'Agent 4 répond correctement sur au moins 3 cas d'erreurs réels (Docker +
+Zephyr) + validation que ton infra Docker tourne dans l'environnement d'Ameni.
+Semaine 7 — Intégration finale
+Chaîne complète : GitHub > Agent 1 (toi) > Agent 2 (Ameni) > Agent 3 (Nour) > Build
+Runner (Ameni) > Déploiement sur passerelle (Yocto ou Raspberry Pi OS standard) >
+Monitoring > Diagnostic RAG (toi).
+Ta soupape de sécurité (mise à jour)
+1. Sacrifie en premier : le support Yocto de la semaine 6 (Ameni peut avancer seule si tu
+es débordée par le RAG).
+2. Sacrifie ensuite : l'indexation de la doc Zephyr complète dans le RAG — garde au
+moins les erreurs de build les plus fréquentes.
+3. Ne sacrifie jamais : la publication de (mock_agent1_output. json).
+Combine ce document avec le cahier des charges fusionné pour la vue d'ensemble.

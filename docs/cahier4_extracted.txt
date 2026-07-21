@@ -1,0 +1,258 @@
+
+
+=== PAGE 1 ===
+
+Cahier des Charges — Version Fusionnée
+Open Source AI-Driven Embedded DevOps Platform (Zephyr RTOS + Yocto +
+Agents IA)
+Équipe : Sahar, Ameni, Nour — 7 semaines restantes
+1. Note d'orientation
+Cette version enrichit le projet initial : l'écosystème Arduino est remplacé par Zephyr
+RTOS pour le microcontrôleur, et la passerelle (Raspberry Pi) utilise une image Linux sur-
+mesure construite avec Yocto Project. Ces deux ajouts sont des compétences très
+valorisées en entreprise, mais nettement plus difficiles qu'Arduino/Docker seul.
+A Principe directeur accepté par l'équipe : l'apprentissage prime sur la perfection.
+On accepte la difficulté, mais on sécurise la démo finale avec un plan de secours (section
+8).
+1bis. Positionnement "Industrie 4.0" (sans changement de stack)
+Une troisième proposition, orientée "maintenance prédictive industrielle" (STM32, bus
+CAN, capteurs industriels, PostgreSQL, Prometheus, Kubernetes), a été étudiée. Décision
+de l'équipe : ne pas l'intégrer techniquement, pour les raisons suivantes :
+
+e Le matériel proposé (STM32, transceiver CAN, capteurs industriels) n'est pas
+disponible et remettrait en cause tout le travail déjà engagé sur ESP32.
+
+« Les briques ajoutées (PostgreSQL, Prometheus, Kubernetes) font doublon avec
+l'infrastructure déjà choisie (InfluxDB, Grafana) sans apporter de valeur pédagogique
+supplémentaire.
+
+«  Lenombre d'options laissées ouvertes (3 frameworks frontend, 5 frameworks IA) n'est
+pas un plan de travail exploitable en 7 semaines.
+
+Ce qui est retenu de cette proposition, sans coût technique supplémentaire :
+
+e Le positionnement narratif du projet dans le rapport final : la plateforme est
+présentée comme une démonstration (proof of concept) de maintenance prédictive
+industrielle, le capteur DHT22/ESP32 jouant le rôle d'un capteur industriel générique.
+
+«  Leraisonnement multi-étapes de l'Agent 4 (détection d'anomalie > recherche
+documentaire > récupération des limites > comparaison > diagnostic >
+recommandation > notification), qui remplace le simple mode "question/réponse" —
+voir le guide détaillé de Sahar.
+
+
+=== PAGE 2 ===
+
+A. Frontend (React + TypeScript) : soumission de l'URL GitHub, suivi visuel du pipeline de
+build, dashboards Grafana intégrés (iframes), chatbot RAG.
+B. Backend & Orchestration IA (FastAPI + Python) : pilote les 4 agents.
+
+Agent Rôle mis à jour
+
+Agent 1— Analyseurdecode Clone le dépôt (GitPython), détecte Zephyr RTOS (présence de
+
+(Gacetise ee)
+
+Agent 2 — Architecte Décide la stratégie de build, les variables d'environnement, la
+
+infrastructure stratégie OTA
+
+Agent 3 — Générateur Génère (via templates Jinja2) les Dockerfiles et fichiers de
+
+d'artefacts configuration Zephyr/Yocto
+
+Agent 4 — Assistant Base ChromaDB avec la doc Zephyr + logs d'erreurs, pour
+
+technique (RAG) diagnostiquer les échecs de build
+C. CI/CD & Build Runner : un conteneur Docker isolé qui installe (l'outil de build de
+Zephyr), compile le firmware, exporte le binaire ou l'erreur.
+
+| : l'outil en ligne de commande officiel de Zephyr qui gère la compilation, les
+dépendances et le flashage du firmware.
+
+D. Edge & Déploiement (Raspberry Pi) : image Linux minimale (Yocto) ou Raspberry Pi
+OS standard en repli, avec Docker Engine faisant tourner Mosquitto, InfluxDB, Grafana.
+E. Flux de données : l'ESP32 (Zephyr RTOS, ou simulateur Python si le matériel est absent)
+publie les mesures capteur en MQTT vers la passerelle.
+3. Stack technique complète
+
+Domaine Outils
+
+Firmware Zephyr RTOS (C), West CLI, ESP32
+
+OS Gateway Yocto Project (BitBake) + repli Raspberry Pi OS
+
+Conteneurisation Docker, Docker Compose
+
+CI/CD GitHub Actions, Build Runner Docker
+
+Backend Python, FastAPI
+
+IA APILLM (Claude/OpenAI/Groq/Ollama), ChromaDB, LangGraph (optionnel)
+
+
+=== PAGE 3 ===
+
+Domaine Outils
+Frontend Vite, React, TypeScript
+IoT /Monitoring ~~ MQTT (Mosquitto), InfluxDB, Grafana
+Gestion de projet  Git, GitHub, GitHub Projects
+4.Répartition des roles
+Sahar — IA & DevOps lourd (tes priorités conservées)
+e Docker complet: infra backend, Mosquitto, InfluxDB, Grafana + Build Runner.
+« Agent1 (détection Zephyr) + Agent 4 (RAG avec doc Zephyr).
+« Contribution à l'intégration de Docker dans l'image Yocto d'Ameni (support ponctuel,
+semaine 5-6).
+Ameni — CI/CD & OS Embarqué
+e  Yocto Project : image Linux minimale pour Raspberry Pi (testée d'abord via QEMU, à
+distance).
+« Build Runner Docker : conteneur qui compile un projet Zephyr via (west build).
+«  Agent2 (décisions d'architecture, stratégie OTA).
+e Tests automatisés + documentation.
+Nour — Fullstack & IoT Embarqué
+« Firmware Zephyr RTOS sur ESP32 (lecture capteur DHT22 + publication MQTT).
+« Agent 3 (génération de fichiers via Jinja2).
+« Frontend React/TypeScript (formulaire GitHub, suivi de pipeline, chat RAG, iframes
+Grafana).
+e Intégration MQTT > InfluxDB > Grafana.
+5. Contrats d'interface mis à jour (assemblage du travail)
+
+( Contrat d'interface : le format JSON exact échangé entre deux agents, figé dès le
+départ pour que chacune développe en parallèle sans attendre les autres, en utilisant un
+fichier (rock 3507)
+
+Sortie de l'Agent 1 (Sahar > Ameni) :
+| json
+
+
+=== PAGE 4 ===
+
+{
+"framework": "Zephyr RTOS",
+"fichiers _detectes": ["prj.conf", "CMakeLists.txt"],
+"carte cible": "esp32",
+"protocoles": ["MQTT", "WiFi"]
+
+;,
+© Le champ ("framework") peut aussi valoir ("Arduino/Platformr0"), ("ESP-IDF"), ("Mbed
+os") ou — Agent 1 détecte désormais plusieurs frameworks, pas uniquement
+Zephyr. Ameni doit prévoir un cas par défaut dans l'Agent 2 pour les frameworks autres
+que Zephyr (ex : refuser poliment ou proposer une config générique).
+
+Sortie de l'Agent 2 (Ameni > Nour) :
+
+json
+
+{
+"strategie build": "docker west build",
+"ota_active": false,
+"monitoring": true,
+"broker_mqtt": "mosquitto",
+"justification": "Projet Zephyr avec MQTT, build isolé nécessaire"
+
+}
+
+Liaisons non-IA (matrice d'interconnexion) :
+
+e Sahar + Ameni: Sahar fournit à Ameni la commande Docker exacte pour lancer le
+Build Runner ; Ameni lui renvoie le chemin du binaire généré ou le log d'erreur (utilisé
+par l'Agent 4 de Sahar).
+
+e Sahar — Nour: Sahar (Agent 1/backend FastAPI) fournit les endpoints REST à Nour,
+qui les consomme dans son frontend React.
+
++  Ameni + Nour : Ameni configure la passerelle Docker (MQTT/InfluxDB) ; Nour
+configure la carte pour publier vers l'IP de cette passerelle et intègre les graphiques
+Grafana en iframe.
+
+6. Méthode de travail (rappel)
+
+Chaque tâche part d'une branche Git dédiée, revue par Pull Request avant fusion. Point
+d'intégration hebdomadaire le vendredi : on remplace progressivement les mocks par les
+vrais composants. Test d'intégration global via (docker-compose up). (Voir le Guide
+d'Intégration Équipe existant — la mécanique ne change pas, seuls les contrats JSON ci-
+dessus sont mis à jour.)
+
+
+=== PAGE 5 ===
+
+7. Planning sur 7 semaines (compressé depuis la version à 8 semaines)
+
+Semaine Sahar Ameni Nour
+
+1 Docker de base + VM Linux + premiers pas Environnement Zephyr +
+FastAPI + premier appel ~~ Yocto (via QEMU) projet "Blinky"
+LLM
+
+2 Infra Docker : Mosquitto Poursuite image Yocto Zephyr + MQTT basique,
+
+minimale maquette React
+
+3 Infra Docker : InfluxDB + Build Runner Docker Vues React (formulaire
+Grafana (installation de (west) GitHub, logs)
+
+4 Agent 1 (détection Agent 2 (stratégie + OTA) Connexion MQTT >
+Zephyr) InfluxDB
+
+5 Consolidation Docker + Build Runner complet Agent 3 (templates Jinja2)
+démarrage doc RAG (compile un vrai projet
+
+Zephyr) + CI/CD
+
+6 Agent 4 (RAG) + Optimisation image Yocto+ Firmware Zephyr complet
+support intégration support OTA basique sur ESP32 + dashboards
+Docker/Yocto Grafana
+
+7 Intégration finale, tests, Intégration finale, tests, Intégration finale (UI + API),
+rapport rapport tests, rapport
+
+8. Gestion des risques et plan de secours
+
+Risque Plan de secours
+
+L'image Yocto n'est La démo finale utilise Raspberry Pi OS standard + Docker ; Yocto reste un
+
+pas préte a temps chantier d'apprentissage documenté dans le rapport, basculé en
+
+production seulement s'il fonctionne a temps
+
+Pas d'accès a un vrai Ameni développe et teste son image Yocto via QEMU (émulateur), sans
+
+Raspberry Pi dépendre du matériel physique avant la fin
+
+Zephyr RTOS trop Partir des exemples officiels Zephyr (| samples/basic/blinky),
+
+complexe pour Nour samples/net/mqgtt_publisher)) et les adapter, plutôt qu'écrire le
+
+en semaine 1-2 firmware from scratch
+
+
+=== PAGE 6 ===
+
+Risque Plan de secours
+CI/CD (Ameni) prend Le Build Runner Docker peut être lancé manuellement en attendant que
+du retard GitHub Actions soit finalisé — le pipeline automatique n'est pas bloquant
+pour la démo
+
+Agent 4 (RAG, Sahar) Ameni et Nour aident à rassembler les cas d'erreurs réels pour la base
+trop dense en documentaire
+semaine 6
+
+9. Livrables finaux
+
+1. Code source complet (dépôt GitHub).
+
+2. Documentation technique (README, architecture, guide d'installation, plan de
+secours documenté).
+
+3. Rapport de stage, incluant une section honnête sur les difficultés rencontrées avec
+Yocto/Zephyr (très valorisé par les encadrants — ça montre une vraie compréhension,
+pas juste un copier-coller réussi).
+
+4. Démonstration de bout en bout (avec ou sans la vraie image Yocto, selon l'avancement
+réel).
+
+5. Soutenance orale.
+
+Ce document remplace le cahier des charges précédent. Il intègre la proposition dAmeni
+(Zephyr + Yocto) tout en sécurisant la faisabilité en 7 semaines.
