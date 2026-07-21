@@ -1,0 +1,1 @@
+/ { aliases { led0 = &blink_led; }; leds { compatible = "gpio-leds"; blink_led: led_0 { gpios = <&gpio0 2 0>; label = "Onboard LED"; }; }; };

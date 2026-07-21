@@ -1,0 +1,6 @@
+{
+  "framework": "Zephyr RTOS",
+  "fichiers_detectes": ["prj.conf", "CMakeLists.txt"],
+  "carte_cible": "esp32",
+  "protocoles": ["MQTT", "WiFi"]
+}
