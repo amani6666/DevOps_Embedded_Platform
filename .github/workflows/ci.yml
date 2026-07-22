@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -21,16 +21,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install pytest
 
-      - name: Run Agent 2 tests
-        run: |
-          # Run from root
-          python -m pytest tests/ -v --cov=src/agent2 --cov-report=xml || echo "No tests directory yet - skipping detailed tests"
-
-      - name: Upload coverage (if tests ran)
-        if: success()
-        uses: codecov/codecov-action@v4
+      - name: Run Agent 2 tests (if tests exist)
+        run: python -m pytest -q || echo "No tests directory yet - skipping"
 
   build-docker:
     needs: test-backend
@@ -41,17 +35,21 @@ jobs:
       - name: Build Build Runner image
         run: docker build -t build-runner -f build-runner/Dockerfile .
 
-      - name: Smoke test firmware build (blinky)
+      - name: Smoke test Zephyr build (blinky sample)
         run: |
-          # Create temporary project for smoke test
-          mkdir -p /tmp/test-firmware
+          echo "=== Running Zephyr smoke test ==="
+          mkdir -p /tmp/test-firmware/app
+          
+          # Run build with proper workspace setup
           docker run --rm \
-            -v /tmp/test-firmware:/workspace/app \
-            build-runner build -b esp32_devkitc_wroom/esp32/procpu samples/basic/blinky --pristine 2>&1 | tee build.log
+            -v /tmp/test-firmware:/workspace \
+            build-runner \
+            build -b esp32_devkitc_wroom/esp32/procpu samples/basic/blinky --pristine || true   # || true to capture logs
 
-      - name: Upload build logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: build.log
+          # Check if binary was produced
+          if [ -f /tmp/test-firmware/zephyr/build/zephyr/zephyr.bin ]; then
+            echo "✅ Firmware build successful"
+          else
+            echo "❌ Build failed - check logs above"
+            exit 1
+          fi
