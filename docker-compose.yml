@@ -24,5 +24,10 @@ services:
     volumes:
       - influx_data:/var/lib/influxdb2
 
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+
 volumes:
   influx_data:
