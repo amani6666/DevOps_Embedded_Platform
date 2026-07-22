@@ -1,0 +1,56 @@
+name: CI Pipeline — Embedded DevOps Platform
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run Agent 2 tests
+        run: |
+          pytest tests/ -v --cov=src/agent2 --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+
+  build-docker:
+    needs: test-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Build Runner image
+        run: docker build -t build-runner -f build-runner/Dockerfile .
+
+      - name: Smoke test firmware build
+        run: |
+          mkdir -p /tmp/test-project
+          docker run --rm \
+            -v /tmp/test-project:/workspace/app \
+            build-runner build -b esp32_devkitc_wroom/esp32/procpu samples/basic/blinky --pristine
+
+  # Optional: Full firmware + Agent chain test (expand later)
+  # integration-test:
+  #   needs: build-docker
+  #   ...
+
+permissions:
+  contents: read
+  packages: write
