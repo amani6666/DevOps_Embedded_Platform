@@ -1,16 +1,17 @@
 #!/bin/bash
 set -e
 
-echo "=== Zephyr Build Runner ==="
-echo "ZEPHYR_BASE: $ZEPHYR_BASE"
-echo "Target board: ${BOARD:-esp32_devkitc_wroom/esp32/procpu}"
+export ZEPHYR_BASE=/workspace/zephyrproject/zephyr
 
-# Allow mounting project at /workspace/app or current dir
-if [ -d "/workspace/app" ]; then
-    cd /workspace/app
-else
-    mkdir -p /workspace/app
-    cd /workspace/app
+if [ -f "/workspace/zephyrproject/zephyr/zephyr-env.sh" ]; then
+    source /workspace/zephyrproject/zephyr/zephyr-env.sh
 fi
 
+echo "=== Zephyr Build Runner ==="
+echo "ZEPHYR_BASE: $ZEPHYR_BASE"
+
+# Se placer dans le workspace Zephyr pour que 'west' reconnaisse toutes ses commandes
+cd /workspace/zephyrproject
+
+# Executer west build en lui indiquant le dossier source de votre application montée
 exec west "$@"
