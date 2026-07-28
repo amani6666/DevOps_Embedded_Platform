@@ -31,8 +31,8 @@ RUN west config fetch.prune true && \
     west update --narrow -o=--depth=1 hal_espressif
 
 WORKDIR /workspace
-COPY build-runner/app.overlay /workspace/app.overlay
-COPY build-runner/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY app.overlay /workspace/app.overlay
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -22,5 +22,8 @@ venv/
 
 # Large / temporary
 zephyr-sdk-*.tar.xz
+*.tar.xz
+*.tar.gz
+*.zip
 *.log
-"@ | Out-File -Encoding utf8 .dockerignore
+"@ | Out-File -Encoding utf8 build-runner/.dockerignore

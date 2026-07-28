@@ -10,8 +10,9 @@ fi
 echo "=== Zephyr Build Runner ==="
 echo "ZEPHYR_BASE: $ZEPHYR_BASE"
 
-# Se placer dans le workspace Zephyr pour que 'west' reconnaisse toutes ses commandes
-cd /workspace/zephyrproject
-
-# Executer west build en lui indiquant le dossier source de votre application montée
-exec west "$@"
+# Execute west build targeting /app
+if [ $# -gt 0 ]; then
+    exec west build -p auto -b esp32_devkitc_wroom /app
+else
+    exec west bui
+fi
