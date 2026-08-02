@@ -17,6 +17,13 @@ echo "ZEPHYR_BASE : ${ZEPHYR_BASE}"
 echo "Working dir : $(pwd)"
 echo "Args        : $*"
 
+# If the command passed is a direct utility invocation (e.g., "west --version")
+# bypass build runner logic and execute west directly
+if [ "${1:-}" = "west" ]; then
+    shift
+    exec west "$@"
+fi
+
 # Default values
 BOARD="${BOARD:-esp32_devkitc_wroom/esp32/procpu}"
 APP_DIR="${APP_DIR:-/app}"
