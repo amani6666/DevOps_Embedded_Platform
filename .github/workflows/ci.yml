@@ -6,38 +6,80 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  BUILD_RUNNER_IMAGE: build-runner:latest
+  TARGET_BOARD: esp32_devkitc_wroom/esp32/procpu
+
 jobs:
   test-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install pytest
+      - name: Run Agent 2 tests (mock mode)
+        env:
+          AGENT2_MOCK: "1"
+        run: |
+          python -m pytest -q || echo "No tests directory yet — skipping"
 
-      - name: Run Agent 2 tests (if tests exist)
-        run: python -m pytest -q || echo "No tests directory yet - skipping"
-
-  build-docker:
+  build-and-verify-firmware:
     needs: test-backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Build Runner Image
-        run: docker build -t build-runner ./build-runner
-
-      - name: Smoke Test Docker Runner Container
+      - name: Build Build Runner image
         run: |
-          echo "=== Verifying Docker Runner Environment ==="
-          # Verify that west and zephyr tools are accessible inside the image
-          docker run --rm build-runner west --help || true
-          echo "✅ Docker Build Runner container built and verified successfully!"
+          docker build -t ${{ env.BUILD_RUNNER_IMAGE }} ./build-runner
+
+      - name: Smoke-test west inside image
+        run: |
+          docker run --rm ${{ env.BUILD_RUNNER_IMAGE }} west --version
+
+      - name: Compile firmware with Build Runner
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/firmware:/app" \
+            ${{ env.BUILD_RUNNER_IMAGE }}
+
+      - name: Verify binary artifacts exist
+        run: |
+          set -e
+          BIN="firmware/build/zephyr/zephyr.bin"
+          ELF="firmware/build/zephyr/zephyr.elf"
+
+          if [ ! -f "$BIN" ]; then
+            echo "::error::Firmware binary not found: $BIN"
+            exit 1
+          fi
+
+          if [ ! -f "$ELF" ]; then
+            echo "::error::ELF not found: $ELF"
+            exit 1
+          fi
+
+          SIZE=$(stat -c%s "$BIN")
+          if [ "$SIZE" -lt 1024 ]; then
+            echo "::error::Binary too small ($SIZE bytes) — build likely failed silently"
+            exit 1
+          fi
+
+          echo "✅ Firmware binary verified: $BIN ($SIZE bytes)"
+          ls -lh firmware/build/zephyr/zephyr.*
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr-firmware
+          path: |
+            firmware/build/zephyr/zephyr.bin
+            firmware/build/zephyr/zephyr.elf
+          retention-days: 7
