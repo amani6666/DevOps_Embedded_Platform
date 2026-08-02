@@ -42,7 +42,7 @@ jobs:
 
       - name: Smoke-test west inside image
         run: |
-          docker run --rm ${{ env.BUILD_RUNNER_IMAGE }} west --version
+          docker run --rm --entrypoint west ${{ env.BUILD_RUNNER_IMAGE }} --version
 
       - name: Compile firmware with Build Runner
         run: |
