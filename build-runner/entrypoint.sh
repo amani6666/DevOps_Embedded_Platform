@@ -12,17 +12,17 @@ if [ -f "${ZEPHYR_BASE}/zephyr-env.sh" ]; then
     source "${ZEPHYR_BASE}/zephyr-env.sh"
 fi
 
-echo "=== Zephyr Build Runner ==="
-echo "ZEPHYR_BASE : ${ZEPHYR_BASE}"
-echo "Working dir : $(pwd)"
-echo "Args        : $*"
-
-# If the command passed is a direct utility invocation (e.g., "west --version")
-# bypass build runner logic and execute west directly
+# 1. Immediate pass-through for direct 'west' subcommands (e.g. west --version)
 if [ "${1:-}" = "west" ]; then
     shift
     exec west "$@"
 fi
+
+# 2. Build execution banner & logs
+echo "=== Zephyr Build Runner ==="
+echo "ZEPHYR_BASE : ${ZEPHYR_BASE}"
+echo "Working dir : $(pwd)"
+echo "Args        : $*"
 
 # Default values
 BOARD="${BOARD:-esp32_devkitc_wroom/esp32/procpu}"
