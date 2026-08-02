@@ -14,7 +14,7 @@ def extract_json_from_markdown(raw_text: str) -> dict[str, Any]:
 
     cleaned = raw_text.strip()
 
-    json_match = re.search(r"`(?:json)?\s*([\s\S]*?)\s*`", cleaned)
+    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
     if json_match:
         cleaned = json_match.group(1).strip()
     else:
@@ -52,9 +52,18 @@ def validate_agent2_output(data: dict[str, Any]) -> None:
                 f"got {type(data[field]).__name__}"
             )
 
-    valid_strategies = {"docker_west_build", "native_west_build", "platformio_build"}
+    valid_strategies = {
+        "docker_west_build",
+        "native_west_build",
+        "platformio_build",
+        "arduino_cli_build",
+        "esp_idf_build",
+    }
     if data["build_strategy"] not in valid_strategies:
         raise JsonParseError(
             f"Invalid build_strategy '{data['build_strategy']}'. "
             f"Must be one of: {valid_strategies}"
         )
+
+    if len(data["justification"]) > 250:
+        raise JsonParseError("justification must be ≤ 250 characters")

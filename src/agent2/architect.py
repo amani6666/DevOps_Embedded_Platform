@@ -8,8 +8,8 @@ to a strict JSON contract for downstream Agent 3 consumption.
 import json
 import os
 from typing import Any
-
 from anthropic import Anthropic
+
 
 from src.agent2.config import AgentConfig
 from src.agent2.exceptions import Agent2Error, FileOperationError
@@ -27,11 +27,11 @@ class ArchitectAgent:
     )
 
     OUTPUT_SCHEMA: dict[str, Any] = {
-        "build_strategy": "docker_west_build | native_west_build | platformio_build",
+        "build_strategy": "docker_west_build | native_west_build | platformio_build | arduino_cli_build | esp_idf_build",
         "ota_active": "boolean",
         "monitoring": "boolean",
         "mqtt_broker": "string",
-        "justification": "string (max 200 chars)",
+        "justification": "string (max 250 chars)",
     }
 
     def __init__(self, config: AgentConfig, mock_mode: bool = False) -> None:
@@ -66,31 +66,46 @@ class ArchitectAgent:
 
     def _generate_mock_decision(self, analysis: dict[str, Any]) -> dict[str, Any]:
         """Generate a deterministic mock decision based on project analysis."""
-        framework = analysis.get("framework", "").lower()
-        protocols = [p.lower() for p in analysis.get("protocols", [])]
-        board = analysis.get("target_board", "").lower()
+        framework = str(analysis.get("framework", "")).lower()
+        protocols = [str(p).lower() for p in analysis.get("protocols", [])]
+        board = str(
+            analysis.get("target_board")
+            or analysis.get("carte_cible")
+            or ""
+        ).lower()
 
         decision = {
             "build_strategy": "docker_west_build",
             "ota_active": False,
             "monitoring": False,
             "mqtt_broker": "none",
-            "justification": "Default mock decision for testing",
+            "justification": "Default mock decision",
         }
 
         if "zephyr" in framework:
             decision["build_strategy"] = "docker_west_build"
-            decision["justification"] = "Zephyr RTOS detected, Docker west build recommended"
+            decision["justification"] = "Zephyr RTOS detected → docker_west_build"
+        elif "arduino" in framework:
+            decision["build_strategy"] = "arduino_cli_build"
+            decision["justification"] = "Arduino framework detected"
+        elif "esp-idf" in framework or "espidf" in framework:
+            decision["build_strategy"] = "esp_idf_build"
+            decision["justification"] = "ESP-IDF framework detected"
+        elif "platformio" in framework:
+            decision["build_strategy"] = "platformio_build"
+            decision["justification"] = "PlatformIO detected"
 
         if any(p in protocols for p in ["mqtt", "wifi"]):
             decision["monitoring"] = True
             decision["mqtt_broker"] = "mosquitto"
-            decision["justification"] += "; MQTT/WiFi detected, monitoring enabled"
+            decision["justification"] += "; MQTT/WiFi → monitoring + mosquitto"
 
         if "esp32" in board:
             decision["ota_active"] = True
-            decision["justification"] += "; ESP32 has sufficient flash for OTA"
+            decision["justification"] += "; ESP32 → OTA enabled"
 
+        # Keep justification within length limits
+        decision["justification"] = decision["justification"][:240]
         return decision
 
     def _build_prompt(self, analysis: dict[str, Any]) -> str:
@@ -100,10 +115,13 @@ class ArchitectAgent:
             f"Respond ONLY in JSON using this exact schema:\n"
             f"{json.dumps(self.OUTPUT_SCHEMA, indent=2)}\n\n"
             f"Rules:\n"
-            f"- Zephyr RTOS + ESP32 -> docker_west_build\n"
+            f"- Zephyr RTOS -> docker_west_build or native_west_build\n"
+            f"- Arduino -> arduino_cli_build\n"
+            f"- ESP-IDF -> esp_idf_build\n"
+            f"- PlatformIO -> platformio_build\n"
             f"- MQTT + WiFi detected -> monitoring=true, mqtt_broker='mosquitto'\n"
-            f"- OTA only if flash > 4MB\n"
-            f"- Keep justification under 200 characters"
+            f"- ESP32 target -> ota_active=true\n"
+            f"- Keep justification under 250 characters"
         )
 
     def load_analysis(self, file_path: str) -> dict[str, Any]:
