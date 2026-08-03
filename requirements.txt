@@ -1,5 +1,2 @@
-<<<<<<< HEAD
-﻿anthropic>=0.30.0,<1.0.0
-=======
+anthropic>=0.30.0,<1.0.0
 ollama
->>>>>>> sahar/main
