@@ -69,7 +69,7 @@ if [ ! -d "${APP_DIR}" ]; then
     exit 1
 fi
 
-# Run the west build
+# Run the west build (-p auto ensures clean CMake rebuilds without FileExistsError)
 echo ">>> Starting west build..."
 west build \
     -p auto \
