@@ -5,6 +5,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    volumes:
+      - ./docs_rag:/app/docs_rag:ro
+      - rag_db:/app/rag_db
 
   mosquitto:
     image: eclipse-mosquitto:2
@@ -31,13 +34,7 @@ services:
     ports:
       - "3000:3000"
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-
+ 
 volumes:
   influx_data:
-  ollama_data:
+  rag_db:
