@@ -230,6 +230,7 @@ Reponds UNIQUEMENT en JSON :
 
     def analyser(self, url_github: str) -> Dict[str, Any]:
         self._log("DEMARRER", f"Analyse agentic de {url_github}")
+        clone_path = None
         try:
             clone_path = self.outil_cloner(url_github)
             scan = self.outil_scanner(clone_path)
@@ -277,6 +278,10 @@ Reponds UNIQUEMENT en JSON :
             return rapport
         except Exception as e:
             return {"framework": "inconnu", "fichiers_detectes": [], "carte_cible": "unknown", "protocoles": [], "confiance": "basse", "erreur": str(e), "memoire_agent": self.memoire}
+        finally:
+            import shutil
+            if clone_path is not None and clone_path.exists():
+                shutil.rmtree(clone_path.parent, ignore_errors=True)
 
     def _construire_raisonnement(self) -> str:
         return " -> ".join([m["etape"] for m in self.memoire])
