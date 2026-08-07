@@ -1,0 +1,10 @@
+sentence-transformers
+fastapi
+uvicorn[standard]
+python-dotenv
+anthropic
+ollama
+gitpython
+groq
+chromadb
+langchain-text-splitters
